@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galerie nástrojů</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: nadpis, pod ním mřížka karet; jedna karta = jeden nástroj */
+:root {
+  --paper: #f4f5f3; --surface: #fcfcfb; --ink: #0b0b0b; --muted: #52514e; --line: #dcdcd6; --accent: #2a78d6;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif; --body: "Source Sans 3", "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #121211; --surface: #1a1a19; --ink: #f0efec; --muted: #c3c2b7; --line: #34342f; --accent: #3987e5; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body); }
+main { max-width: 900px; margin: 0 auto; padding: 40px 20px 56px; display: grid; gap: 24px; }
+h1 { font: 800 32px var(--display); margin: 0; letter-spacing: -0.01em; }
+.lead { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+a.card { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; color: inherit; text-decoration: none; }
+a.card:hover { border-color: var(--accent); }
+a.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+a.card h2 { font: 600 19px var(--display); margin: 0; color: var(--accent); }
+a.card p { margin: 0; color: var(--muted); font-size: 15px; }
+footer { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Galerie nástrojů</h1>
+    <p class="lead">Malé nástroje postavené s pomocí AI. Běží jen ve vašem prohlížeči, nic neukládají a nikam neodesílají.</p>
+  </header>
+  <div class="grid">
+    <a class="card" href="kalkulacka-uroku/">
+      <h2>Kalkulačka složeného úroku</h2>
+      <p>Jak poroste jednorázový a pravidelný měsíční vklad za 10 let při zhodnocení 5, 12 a 20 % ročně.</p>
+    </a>
+  </div>
+  <footer>Petr Stoklasa</footer>
+</main>
+</body>
+</html>

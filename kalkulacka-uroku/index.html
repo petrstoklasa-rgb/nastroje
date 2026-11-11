@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulačka složeného úroku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: vstupy v jednom řádku nahoře → souhrnné dlaždice → graf 10 let → tabulka po letech */
+:root {
+  --paper: #f4f5f3;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --muted: #52514e;
+  --line: #dcdcd6;
+  --grid: #e8e8e3;
+  --accent: #2a78d6;
+  --bad: #b3261e;
+  --bad-soft: #fbe9e7;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --ref: #8a8983;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121211; --surface: #1a1a19; --ink: #f0efec; --muted: #c3c2b7; --line: #34342f; --grid: #2a2a27;
+    --accent: #3987e5; --bad: #ff8f86; --bad-soft: #3a1d1b; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --ref: #8f8e86; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211; --surface: #1a1a19; --ink: #f0efec; --muted: #c3c2b7; --line: #34342f; --grid: #2a2a27;
+  --accent: #3987e5; --bad: #ff8f86; --bad-soft: #3a1d1b; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --ref: #8f8e86; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--body); }
+main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 48px; display: grid; gap: 20px; }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 18px; font-weight: 600; }
+.lead { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 16px; }
+.inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.field { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.field input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 600 20px var(--body); padding: 9px 12px; font-variant-numeric: tabular-nums; }
+.field span { padding: 0 12px; color: var(--muted); font-weight: 600; }
+.field:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.field.invalid { border-color: var(--bad); background: var(--bad-soft); }
+.field input:focus { outline: none; }
+.help { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.err { font-size: 14px; color: var(--bad); font-weight: 600; margin: 4px 0 0; min-height: 1.4em; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.tile { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--paper); }
+.tile .k { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.tile .v { font: 800 24px var(--display); font-variant-numeric: tabular-nums; display: block; margin-top: 2px; }
+.tile .s { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.key { width: 16px; height: 0; border-top: 2px solid; display: inline-block; }
+.key.dash { border-top-style: dashed; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chartwrap { position: relative; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); min-width: 190px; display: none; }
+.tip .t { color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.tip .r b { font-weight: 700; }
+.tip .r span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 13px; color: var(--muted); }
+tr:last-child td { border-bottom: 0; font-weight: 700; }
+details summary { cursor: pointer; font-weight: 600; }
+details summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--muted); margin: 0; max-width: 75ch; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Kalkulačka složeného úroku</h1>
+    <p class="lead">Jak poroste vklad za 10 let při ročním zhodnocení 5 %, 12 % a 20 %. Úročí se měsíčně, pravidelný vklad začíná druhým měsícem.</p>
+  </header>
+
+  <section class="panel" aria-label="Zadání">
+    <div class="inputs">
+      <div>
+        <label for="initial">Jednorázový vklad na začátku</label>
+        <div class="field" id="f-initial"><input id="initial" type="text" inputmode="numeric" autocomplete="off" value="100 000" aria-describedby="e-initial"><span>Kč</span></div>
+        <p class="err" id="e-initial" aria-live="polite"></p>
+      </div>
+      <div>
+        <label for="monthly">Měsíční vklad od 2. měsíce</label>
+        <div class="field" id="f-monthly"><input id="monthly" type="text" inputmode="numeric" autocomplete="off" value="5 000" aria-describedby="e-monthly"><span>Kč</span></div>
+        <p class="err" id="e-monthly" aria-live="polite"></p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:-8px">Jen celá kladná čísla, mezery mezi tisíci jsou povolené. Nejvýše 1 000 000 000 Kč.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-res">
+    <h2 id="h-res">Hodnota po 10 letech</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="legend" id="legend"></div>
+    <div class="chartwrap" id="chartwrap">
+      <svg id="chart" role="img" aria-label="Graf vývoje hodnoty za 10 let pro tři varianty zhodnocení"></svg>
+      <div class="tip" id="tip" role="status"></div>
+    </div>
+    <details>
+      <summary>Tabulka po letech</summary>
+      <div class="tablewrap"><table id="table"></table></div>
+    </details>
+    <p class="note">Výpočet: měsíční sazba = roční sazba ÷ 12. Vklad daného měsíce se připíše na začátku měsíce a úročí se už v tomto měsíci. Nezahrnuje daně, poplatky ani inflaci.</p>
+  </section>
+</main>
+
+<script>
+// CALC START
+const RATES = [0.05, 0.12, 0.20];
+const MONTHS = 120;
+const MAX_VALUE = 1000000000;
+
+function parsePositiveInt(raw) {
+  const s = String(raw).replace(/[\s  ]/g, "");
+  if (s === "") return { ok: false, error: "Zadejte částku." };
+  if (!/^\d+$/.test(s)) return { ok: false, error: "Povolená jsou jen celá čísla bez desetinných míst a znamének." };
+  const n = Number(s);
+  if (n < 1) return { ok: false, error: "Částka musí být větší než nula." };
+  if (n > MAX_VALUE) return { ok: false, error: "Nejvyšší povolená částka je 1 000 000 000 Kč." };
+  return { ok: true, value: n };
+}
+
+function simulate(initial, monthly, annualRate) {
+  const i = annualRate / 12;
+  const values = [initial];      // měsíc 0: počáteční vklad právě vložen
+  const deposits = [initial];
+  let v = 0, d = 0;
+  for (let m = 1; m <= MONTHS; m++) {
+    const dep = m === 1 ? initial : monthly;
+    d += dep;
+    v = (v + dep) * (1 + i);
+    values.push(v);
+    deposits.push(d);
+  }
+  return { values, deposits };
+}
+// CALC END
+
+const COLORS = ["--s1", "--s2", "--s3"];
+const NAMES = ["5 % ročně", "12 % ročně", "20 % ročně"];
+const czk = new Intl.NumberFormat("cs-CZ", { maximumFractionDigits: 0 });
+const compact = new Intl.NumberFormat("cs-CZ", { notation: "compact", maximumFractionDigits: 2 });
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+let current = null;
+
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function monthLabel(m) {
+  if (m === 0) return "Začátek";
+  const y = Math.floor(m / 12), r = m % 12;
+  const ys = y === 0 ? "" : y === 1 ? "1 rok" : y < 5 ? `${y} roky` : `${y} let`;
+  const rs = r === 0 ? "" : r === 1 ? "1 měsíc" : r < 5 ? `${r} měsíce` : `${r} měsíců`;
+  return [ys, rs].filter(Boolean).join(" ");
+}
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const f of [1, 2, 2.5, 5, 10]) if (f * p >= v) return f * p;
+  return 10 * p;
+}
+
+function validate() {
+  const out = {};
+  for (const id of ["initial", "monthly"]) {
+    const r = parsePositiveInt($(id).value);
+    $(`f-${id}`).classList.toggle("invalid", !r.ok);
+    $(id).setAttribute("aria-invalid", String(!r.ok));
+    $(`e-${id}`).textContent = r.ok ? "" : r.error;
+    out[id] = r;
+  }
+  return out;
+}
+
+function update() {
+  const v = validate();
+  if (!v.initial.ok || !v.monthly.ok) { document.getElementById("chartwrap").style.opacity = "0.4"; return; }
+  document.getElementById("chartwrap").style.opacity = "1";
+  const sims = RATES.map(r => simulate(v.initial.value, v.monthly.value, r));
+  current = { sims, deposits: sims[0].deposits };
+  renderTiles(); renderLegend(); renderChart(); renderTable();
+}
+
+function renderTiles() {
+  const { sims, deposits } = current;
+  const paid = deposits[MONTHS];
+  const t = $("tiles"); t.textContent = "";
+  const add = (key, dashed, label, value, sub) => {
+    const d = document.createElement("div"); d.className = "tile";
+    const k = document.createElement("div"); k.className = "k";
+    const sw = document.createElement("i"); sw.className = "key" + (dashed ? " dash" : ""); sw.style.borderTopColor = `var(${key})`;
+    k.append(sw, document.createTextNode(label));
+    const vv = document.createElement("span"); vv.className = "v"; vv.textContent = value;
+    const s = document.createElement("span"); s.className = "s"; s.textContent = sub;
+    d.append(k, vv, s); t.appendChild(d);
+  };
+  add("--ref", true, "Vloženo celkem", `${czk.format(paid)} Kč`, `1 + 119 měsíčních vkladů`);
+  sims.forEach((s, i) => {
+    const end = s.values[MONTHS];
+    add(COLORS[i], false, NAMES[i], `${czk.format(end)} Kč`, `výnos ${czk.format(end - paid)} Kč · ${(end / paid).toLocaleString("cs-CZ", { maximumFractionDigits: 2 })}× vklad`);
+  });
+}
+
+function renderLegend() {
+  const l = $("legend"); l.textContent = "";
+  const add = (key, dashed, label) => {
+    const s = document.createElement("span");
+    const sw = document.createElement("i"); sw.className = "key" + (dashed ? " dash" : ""); sw.style.borderTopColor = `var(${key})`;
+    s.append(sw, document.createTextNode(label)); l.appendChild(s);
+  };
+  NAMES.forEach((n, i) => add(COLORS[i], false, n));
+  add("--ref", true, "Vloženo");
+}
+
+function renderChart() {
+  const svg = $("chart");
+  svg.textContent = "";
+  const W = Math.max(320, $("chartwrap").clientWidth);
+  const narrow = W < 560;
+  const H = narrow ? 300 : 380;
+  const m = { l: narrow ? 52 : 64, r: narrow ? 12 : 92, t: 12, b: 32 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const { sims, deposits } = current;
+  const step = niceMax(Math.max(...sims[2].values) / 4);
+  const ticks = Math.ceil(Math.max(...sims[2].values) / step);
+  const maxV = step * ticks;
+  const x = mo => m.l + (mo / MONTHS) * pw;
+  const y = v => m.t + ph - (v / maxV) * ph;
+  const ink2 = cssVar("--muted"), grid = cssVar("--grid");
+
+  for (let k = 0; k <= ticks; k++) {
+    const val = step * k, yy = y(val);
+    el("line", { x1: m.l, x2: m.l + pw, y1: yy, y2: yy, stroke: grid, "stroke-width": 1 }, svg);
+    const t = el("text", { x: m.l - 8, y: yy + 4, "text-anchor": "end", "font-size": 12, fill: ink2 }, svg);
+    t.textContent = k === 0 ? "0" : compact.format(val);
+  }
+  for (let yr = 0; yr <= 10; yr += narrow ? 2 : 1) {
+    const t = el("text", { x: x(yr * 12), y: H - 10, "text-anchor": "middle", "font-size": 12, fill: ink2 }, svg);
+    t.textContent = yr === 0 ? "0" : `${yr}. rok`;
+  }
+
+  const path = arr => arr.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  el("path", { d: path(deposits), fill: "none", stroke: cssVar("--ref"), "stroke-width": 2, "stroke-dasharray": "5 4" }, svg);
+  sims.forEach((s, i) => el("path", { d: path(s.values), fill: "none", stroke: cssVar(COLORS[i]), "stroke-width": 2, "stroke-linejoin": "round" }, svg));
+
+  if (!narrow) {
+    // přímé popisky na konci čar, rozestoupené, aby se nepřekrývaly
+    const ends = sims.map((s, i) => ({ y: y(s.values[MONTHS]), label: ["5 %", "12 %", "20 %"][i], c: COLORS[i] }));
+    ends.push({ y: y(deposits[MONTHS]), label: "vloženo", c: "--ref" });
+    ends.sort((a, b) => a.y - b.y);
+    for (let k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 16) ends[k].y = ends[k - 1].y + 16;
+    ends.forEach(e => { const t = el("text", { x: m.l + pw + 8, y: e.y + 4, "font-size": 13, "font-weight": 600, fill: cssVar("--ink") }, svg); t.textContent = e.label; });
+  }
+
+  const hair = el("line", { y1: m.t, y2: m.t + ph, stroke: ink2, "stroke-width": 1, visibility: "hidden" }, svg);
+  const dots = sims.map((s, i) => el("circle", { r: 4.5, fill: cssVar(COLORS[i]), stroke: cssVar("--surface"), "stroke-width": 2, visibility: "hidden" }, svg));
+  const hit = el("rect", { x: m.l, y: m.t, width: pw, height: ph, fill: "transparent", tabindex: 0, "aria-label": "Graf: šipkami vlevo a vpravo procházejte roky" }, svg);
+  let focusMonth = MONTHS;
+
+  const show = mo => {
+    hair.setAttribute("x1", x(mo)); hair.setAttribute("x2", x(mo)); hair.setAttribute("visibility", "visible");
+    dots.forEach((d, i) => { d.setAttribute("cx", x(mo)); d.setAttribute("cy", y(sims[i].values[mo])); d.setAttribute("visibility", "visible"); });
+    const tip = $("tip"); tip.textContent = "";
+    const h = document.createElement("div"); h.className = "t"; h.textContent = monthLabel(mo); tip.appendChild(h);
+    const row = (key, dashed, label, val) => {
+      const r = document.createElement("div"); r.className = "r";
+      const s = document.createElement("span"); const sw = document.createElement("i"); sw.className = "key" + (dashed ? " dash" : ""); sw.style.borderTopColor = `var(${key})`;
+      s.append(sw, document.createTextNode(label));
+      const b = document.createElement("b"); b.textContent = `${czk.format(val)} Kč`;
+      r.append(s, b); tip.appendChild(r);
+    };
+    [2, 1, 0].forEach(i => row(COLORS[i], false, NAMES[i], sims[i].values[mo]));
+    row("--ref", true, "Vloženo", deposits[mo]);
+    tip.style.display = "block";
+    const scale = $("chartwrap").clientWidth / W;
+    const px = x(mo) * scale, tw = tip.offsetWidth;
+    tip.style.left = `${px + 14 + tw > $("chartwrap").clientWidth ? px - tw - 14 : px + 14}px`;
+    tip.style.top = `${m.t * scale + 8}px`;
+  };
+  const hide = () => { hair.setAttribute("visibility", "hidden"); dots.forEach(d => d.setAttribute("visibility", "hidden")); $("tip").style.display = "none"; };
+  hit.addEventListener("pointermove", e => {
+    const r = svg.getBoundingClientRect();
+    const sx = (e.clientX - r.left) * (W / r.width);
+    show(Math.max(0, Math.min(MONTHS, Math.round(((sx - m.l) / pw) * MONTHS))));
+  });
+  hit.addEventListener("pointerleave", hide);
+  hit.addEventListener("focus", () => show(focusMonth));
+  hit.addEventListener("blur", hide);
+  hit.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight") focusMonth = Math.min(MONTHS, focusMonth + 12);
+    else if (e.key === "ArrowLeft") focusMonth = Math.max(0, focusMonth - 12);
+    else return;
+    e.preventDefault(); show(focusMonth);
+  });
+}
+
+function renderTable() {
+  const { sims, deposits } = current;
+  const tb = $("table"); tb.textContent = "";
+  const tr = cells => { const r = document.createElement("tr"); cells.forEach(([tag, txt]) => { const c = document.createElement(tag); c.textContent = txt; r.appendChild(c); }); tb.appendChild(r); };
+  tr([["th", "Konec roku"], ["th", "Vloženo"], ["th", "5 %"], ["th", "12 %"], ["th", "20 %"]]);
+  for (let yr = 1; yr <= 10; yr++) {
+    const mo = yr * 12;
+    tr([["td", `${yr}.`], ["td", czk.format(deposits[mo])], ...sims.map(s => ["td", czk.format(s.values[mo])])]);
+  }
+}
+
+for (const id of ["initial", "monthly"]) {
+  $(id).addEventListener("input", update);
+  $(id).addEventListener("blur", () => { const r = parsePositiveInt($(id).value); if (r.ok) $(id).value = czk.format(r.value); });
+}
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => current && renderChart(), 120); });
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => current && renderChart()); } catch (e) {}
+new MutationObserver(() => current && renderChart()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+update();
+</script>
+</body>
+</html>
